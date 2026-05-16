@@ -61,14 +61,18 @@ remove_distro_node_packages() {
   die "no supported package manager (apt-get/apt/dnf/yum/pacman/apk/zypper) to remove distro node"
 }
 
-_self_root="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
-NODE_PREFIX="${NODE_PREFIX:-$_self_root/tools/node}"
+home_root="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+if [[ "$(id -u)" -eq 0 ]]; then
+  NODE_PREFIX="${NODE_PREFIX:-/opt/node}"
+else
+  NODE_PREFIX="${NODE_PREFIX:-${home_root}/node}"
+fi
 
 usage() {
   cat <<EOF
 Usage: $0 [VERSION]
 VERSION: lts|current|MAJOR|x.y.z  (default: lts)
-Install dir: NODE_PREFIX (default: <this-repo>/tools/node)
+Install dir: NODE_PREFIX (default: /opt/node if root, else <this-repo>/tools/node)
 EOF
 }
 
