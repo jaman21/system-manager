@@ -61,18 +61,21 @@ remove_distro_node_packages() {
   die "no supported package manager (apt-get/apt/dnf/yum/pacman/apk/zypper) to remove distro node"
 }
 
-home_root="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
-if [[ "$(id -u)" -eq 0 ]]; then
-  NODE_PREFIX="${NODE_PREFIX:-/opt/node}"
-else
-  NODE_PREFIX="${NODE_PREFIX:-${home_root}/node}"
-fi
+ensure_root() {
+  [[ "$(id -u)" -eq 0 ]] && return 0
+  have sudo || die "sudo required to install (or run as root)"
+  local script="${BASH_SOURCE[0]:-$0}"
+  [[ "$script" == /* ]] || script="$(cd "$(dirname "$script")" && pwd)/$(basename "$script")"
+  exec sudo -E "$script" "$@"
+}
+
+NODE_PREFIX="${NODE_PREFIX:-/opt/node}"
 
 usage() {
   cat <<EOF
 Usage: $0 [VERSION]
 VERSION: lts|current|MAJOR|x.y.z  (default: lts)
-Install dir: NODE_PREFIX (default: /opt/node if root, else <this-repo>/tools/node)
+Install dir: NODE_PREFIX (default: /opt/node; prompts for sudo password if needed)
 EOF
 }
 
@@ -336,11 +339,10 @@ sync_conda_prefix() {
 }
 
 write_root_profiled_node_path() {
-  [[ "$(id -u)" -eq 0 ]] || return 0
   [[ -n "${NODEJS_UPDATE_NO_SYSTEM_PROFILE:-}" ]] && return 0
   [[ -d /etc/profile.d ]] || return 0
   [[ -x "${NODE_PREFIX}/current/bin/node" ]] || return 0
-  local f="/etc/profile.d/openclaw-nodejs-local.sh"
+  local f="/etc/profile.d/nodejs.sh"
   umask 022
   cat >"$f" <<EOF
 # Node/npm under ${NODE_PREFIX}/current (nodejs-update.sh)
@@ -365,4 +367,5 @@ main() {
   write_root_profiled_node_path
 }
 
+ensure_root "$@"
 main "$@"
